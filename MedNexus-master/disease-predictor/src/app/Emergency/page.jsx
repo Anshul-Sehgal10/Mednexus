@@ -13,20 +13,47 @@ import {
 } from "lucide-react";
 import EmergencyChat from "../../components/EmergencyChat";
 import axios from "axios";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import { Polyline } from "react-leaflet";
-import L from "leaflet";
+import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 
-const patientIcon = new L.Icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/235/235861.png",
-  iconSize: [40, 40],
-});
+// Dynamically import Leaflet components to avoid SSR issues
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Marker),
+  { ssr: false }
+);
+const Popup = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Popup),
+  { ssr: false }
+);
+const Polyline = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Polyline),
+  { ssr: false }
+);
 
-const doctorIcon = new L.Icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/512/387/387561.png",
-  iconSize: [35, 35],
-});
+// Custom Icons - will be created client-side
+let patientIcon, doctorIcon;
+
+if (typeof window !== "undefined") {
+  const L = require("leaflet");
+  
+  patientIcon = new L.Icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/235/235861.png",
+    iconSize: [40, 40],
+  });
+
+  doctorIcon = new L.Icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/387/387561.png",
+    iconSize: [35, 35],
+  });
+}
 
 const PatientEmergencyDashboard = () => {
   const [isEmergencyTriggered, setIsEmergencyTriggered] = useState(false);
@@ -38,11 +65,33 @@ const PatientEmergencyDashboard = () => {
   const [routeCoords, setRouteCoords] = useState([]);
   const [emergencySeverity, setEmergencySeverity] = useState(""); // New state for emergency severity
   const [severitySelected, setSeveritySelected] = useState(false); // Flag to track if severity has been selected
+  const [iconsInitialized, setIconsInitialized] = useState(false);
+
+  // Initialize icons on client side
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const L = require("leaflet");
+      
+      patientIcon = new L.Icon({
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/235/235861.png",
+        iconSize: [40, 40],
+      });
+
+      doctorIcon = new L.Icon({
+        iconUrl: "https://cdn-icons-png.flaticon.com/512/387/387561.png",
+        iconSize: [35, 35],
+      });
+      
+      setIconsInitialized(true);
+    }
+  }, []);
 
   useEffect(() => {
-    // Fetch user from localStorage
-    const userFromLocalStorage = JSON.parse(localStorage.getItem("user"));
-    setUser(userFromLocalStorage);
+    // Fetch user from localStorage - only on client side
+    if (typeof window !== "undefined") {
+      const userFromLocalStorage = JSON.parse(localStorage.getItem("user"));
+      setUser(userFromLocalStorage);
+    }
   }, []);
 
   useEffect(() => {
@@ -73,7 +122,7 @@ const PatientEmergencyDashboard = () => {
 
     setLoading(true);
 
-    if (!navigator.geolocation) {
+    if (typeof window === "undefined" || !navigator.geolocation) {
       alert("Geolocation is not supported by your browser.");
       setLoading(false);
       return;
@@ -350,7 +399,7 @@ const PatientEmergencyDashboard = () => {
 
             <div className="bg-gray-800/50 rounded-lg h-[calc(100%-4rem)] flex items-center justify-center">
               <div className="flex-1 p-6 overflow-y-auto">
-                {firstEmergency && firstEmergency.patientLocation && (
+                {iconsInitialized && typeof window !== "undefined" && firstEmergency && firstEmergency.patientLocation ? (
                   <MapContainer
                     center={[
                       firstEmergency.patientLocation.lat,
@@ -391,6 +440,10 @@ const PatientEmergencyDashboard = () => {
                       <Polyline positions={routeCoords} color="blue" />
                     )}
                   </MapContainer>
+                ) : (
+                  <div className="h-[500px] flex items-center justify-center text-gray-400">
+                    {!iconsInitialized ? "Loading map..." : "No emergency data available"}
+                  </div>
                 )}
               </div>
             </div>

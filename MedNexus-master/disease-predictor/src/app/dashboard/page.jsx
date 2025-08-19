@@ -10,41 +10,55 @@ import {
   Phone,
   MessageCircle,
 } from "lucide-react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  Polyline,
-} from "react-leaflet";
+import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+
+// Dynamically import Leaflet components to avoid SSR issues
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((mod) => mod.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Marker),
+  { ssr: false }
+);
+const Popup = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Popup),
+  { ssr: false }
+);
+const Polyline = dynamic(
+  () => import("react-leaflet").then((mod) => mod.Polyline),
+  { ssr: false }
+);
 import axios from "axios";
 import { ChatDialog } from "@/components/chat-dialog";
 
-// Custom Icons
-const blueIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
+// Custom Icons - will be created client-side
+let blueIcon, redIcon;
 
-const redIcon = new L.Icon({
-  iconUrl: "/ca506f6caf2a9dfb39b01910e635c2fd.png",
-  iconSize: [30, 41],
-  iconAnchor: [12, 41],
-});
-
-const DoctorDashboard = () => {
-  // Initialize user state with proper null checking
-  const [user, setUser] = useState(() => {
-    if (typeof window !== "undefined") {
-      const savedUser = localStorage.getItem("user");
-      return savedUser ? JSON.parse(savedUser) : null;
-    }
-    return null;
+if (typeof window !== "undefined") {
+  const L = require("leaflet");
+  
+  blueIcon = new L.Icon({
+    iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
   });
 
+  redIcon = new L.Icon({
+    iconUrl: "/ca506f6caf2a9dfb39b01910e635c2fd.png",
+    iconSize: [30, 41],
+    iconAnchor: [12, 41],
+  });
+}
+
+const DoctorDashboard = () => {
+  // Initialize user state as null to avoid SSR issues
+  const [user, setUser] = useState(null);
   const [emergencyRequests, setEmergencyRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [responderLocation, setResponderLocation] = useState(null);
@@ -53,16 +67,36 @@ const DoctorDashboard = () => {
   const [routeCoords, setRouteCoords] = useState([]);
   // Add a loading state for initial user check
   const [isUserLoading, setIsUserLoading] = useState(true);
+  const [iconsInitialized, setIconsInitialized] = useState(false);
 
-  // Update user effect
+  // Initialize icons on client side
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedUser = localStorage.getItem("user");
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      }
-      setIsUserLoading(false);
+      const L = require("leaflet");
+      
+      blueIcon = new L.Icon({
+        iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      });
+
+      redIcon = new L.Icon({
+        iconUrl: "/ca506f6caf2a9dfb39b01910e635c2fd.png",
+        iconSize: [30, 41],
+        iconAnchor: [12, 41],
+      });
+      
+      setIconsInitialized(true);
     }
+  }, []);
+
+  // Update user effect - only run on client side
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    setIsUserLoading(false);
   }, []);
 
   // Rest of your existing code remains the same until the return statement
@@ -130,7 +164,7 @@ const DoctorDashboard = () => {
 
   /** ✅ Get Doctor's Location */
   const getResponderLocation = () => {
-    if (navigator.geolocation) {
+    if (typeof window !== "undefined" && navigator.geolocation) {
       navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
@@ -498,52 +532,58 @@ const DoctorDashboard = () => {
             </div>
             <div className="bg-gray-800/50 rounded-lg h-[calc(100%-4rem)] flex items-center justify-center">
               <div className="flex-1 p-6 overflow-y-auto">
-                <MapContainer
-                  key={
-                    responderLocation
-                      ? `${responderLocation.lat}-${responderLocation.lng}`
-                      : "default"
-                  }
-                  center={[
-                    responderLocation?.lat || 0,
-                    responderLocation?.lng || 0,
-                  ]}
-                  zoom={20}
-                  style={{ height: "500px", width: "100%" }}
-                >
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution="&copy; OpenStreetMap contributors"
-                  />
-                  {/* Markers for each patient's location */}
-                  {emergencyRequests.map((emergency) => (
-                    <Marker
-                      key={emergency._id}
-                      position={[
-                        emergency.patientLocation.lat,
-                        emergency.patientLocation.lng,
-                      ]}
-                      icon={blueIcon}
-                    >
-                      <Popup>
-                        {emergency.patientId?.name || "Unknown Patient"}
-                      </Popup>
-                    </Marker>
-                  ))}
+                {iconsInitialized && typeof window !== "undefined" ? (
+                  <MapContainer
+                    key={
+                      responderLocation
+                        ? `${responderLocation.lat}-${responderLocation.lng}`
+                        : "default"
+                    }
+                    center={[
+                      responderLocation?.lat || 0,
+                      responderLocation?.lng || 0,
+                    ]}
+                    zoom={20}
+                    style={{ height: "500px", width: "100%" }}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution="&copy; OpenStreetMap contributors"
+                    />
+                    {/* Markers for each patient's location */}
+                    {emergencyRequests.map((emergency) => (
+                      <Marker
+                        key={emergency._id}
+                        position={[
+                          emergency.patientLocation.lat,
+                          emergency.patientLocation.lng,
+                        ]}
+                        icon={blueIcon}
+                      >
+                        <Popup>
+                          {emergency.patientId?.name || "Unknown Patient"}
+                        </Popup>
+                      </Marker>
+                    ))}
 
-                  {/* Marker for doctor's location */}
-                  {responderLocation && (
-                    <Marker
-                      position={[responderLocation.lat, responderLocation.lng]}
-                      icon={redIcon}
-                    >
-                      <Popup>Your Location</Popup>
-                    </Marker>
-                  )}
-                  {routeCoords.length > 0 && (
-                    <Polyline positions={routeCoords} color="blue" />
-                  )}
-                </MapContainer>
+                    {/* Marker for doctor's location */}
+                    {responderLocation && (
+                      <Marker
+                        position={[responderLocation.lat, responderLocation.lng]}
+                        icon={redIcon}
+                      >
+                        <Popup>Your Location</Popup>
+                      </Marker>
+                    )}
+                    {routeCoords.length > 0 && (
+                      <Polyline positions={routeCoords} color="blue" />
+                    )}
+                  </MapContainer>
+                ) : (
+                  <div className="h-[500px] flex items-center justify-center text-gray-400">
+                    Loading map...
+                  </div>
+                )}
               </div>
             </div>
           </div>

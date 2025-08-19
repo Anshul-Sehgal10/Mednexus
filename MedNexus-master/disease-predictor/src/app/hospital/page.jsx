@@ -4,20 +4,45 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Bell, Moon, Sun, Phone, MessageCircle } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
-import L from 'leaflet';
+
+// Dynamically import Leaflet components to avoid SSR issues
+const MapContainer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Marker),
+  { ssr: false }
+);
+const Popup = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Popup),
+  { ssr: false }
+);
+const useMap = dynamic(
+  () => import('react-leaflet').then((mod) => mod.useMap),
+  { ssr: false }
+);
 
 
-// Component to handle map position updates
-function MapUpdater({ center }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, 13);
-  }, [center, map]);
-  return null;
-}
+// Component to handle map position updates - dynamically imported
+const MapUpdater = dynamic(
+  () => Promise.resolve(({ center }) => {
+    const { useMap } = require('react-leaflet');
+    const map = useMap();
+    useEffect(() => {
+      map.setView(center, 13);
+    }, [center, map]);
+    return null;
+  }),
+  { ssr: false }
+);
 
 const DoctorDashboard = () => {
  
@@ -25,11 +50,17 @@ const DoctorDashboard = () => {
   const [mapCenter, setMapCenter] = useState([0, 0]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isClient, setIsClient] = useState(false);
   const API_KEY = "ca277f684e914ee8b72058fbc5134660";
+
+  // Initialize client-side state
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const getCurrentLocation = () => {
     return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
+      if (typeof window === "undefined" || !navigator.geolocation) {
         reject(new Error('Geolocation is not supported by your browser'));
       } else {
         navigator.geolocation.getCurrentPosition(
@@ -108,8 +139,10 @@ const DoctorDashboard = () => {
   };
 
   useEffect(() => {
-    fetchNearbyHospitals();
-  }, []); // Fetch hospitals on component mount
+    if (isClient) {
+      fetchNearbyHospitals();
+    }
+  }, [isClient]); // Fetch hospitals on component mount, only on client side
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -180,7 +213,7 @@ const DoctorDashboard = () => {
               <h2 className="text-2xl font-bold">Live Location Tracking</h2>
             </div>
             <div className="h-[calc(100%-5rem)]">
-              {mapCenter[0] !== 0 && (
+              {isClient && mapCenter[0] !== 0 ? (
                 <MapContainer
                   center={mapCenter}
                   zoom={13}
@@ -193,19 +226,19 @@ const DoctorDashboard = () => {
                   />
                   {/* Current Location Marker */}
                   <Marker
-  position={mapCenter}
-  icon={L.divIcon({
-    className: 'current-location-marker',
-    html: `
-      <div style="position: relative;">
-        <div class="radar-wave"></div>
-        <div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white relative z-10"></div>
-      </div>
-    `,
-  })}
->
-  <Popup>Your Location</Popup>
-</Marker>
+                    position={mapCenter}
+                    icon={typeof window !== "undefined" ? require('leaflet').divIcon({
+                      className: 'current-location-marker',
+                      html: `
+                        <div style="position: relative;">
+                          <div class="radar-wave"></div>
+                          <div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white relative z-10"></div>
+                        </div>
+                      `,
+                    }) : undefined}
+                  >
+                    <Popup>Your Location</Popup>
+                  </Marker>
 
                   {/* Hospital Markers */}
                   {hospitals.map((hospital, index) => (
@@ -215,7 +248,7 @@ const DoctorDashboard = () => {
                         hospital.properties.lat,
                         hospital.properties.lon
                       ]}
-                      icon={L.divIcon({
+                      icon={typeof window !== "undefined" ? require('leaflet').divIcon({
                         className: 'current-location-marker',
                         html: `
                           <div style="position: relative;">
@@ -223,7 +256,7 @@ const DoctorDashboard = () => {
                             <div class="w-4 h-4 bg-red-500 rounded-full border-2 border-white relative z-10"></div>
                           </div>
                         `,
-                      })}
+                      }) : undefined}
                     >
                       <Popup>
                         <div className="text-gray-900">
@@ -236,6 +269,10 @@ const DoctorDashboard = () => {
                   ))}
                   <MapUpdater center={mapCenter} />
                 </MapContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-400">
+                  {!isClient ? "Loading map..." : "Getting your location..."}
+                </div>
               )}
             </div>
           </div>
