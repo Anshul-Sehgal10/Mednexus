@@ -1,3 +1,4 @@
+"use client";
 import { cn } from "disease-predictor/src/lib/utils.js";
 import { motion, useAnimationControls } from "framer-motion";
 import React, { useEffect } from "react";

@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";

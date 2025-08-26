@@ -1,0 +1,95 @@
+# =========================
+# Node.js (Next.js + Backend)
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build output
+.next/
+out/
+dist/
+build/
+.cache/
+.nyc_output/
+
+# Local environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs
+*.log
+*.log.*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# =========================
+# Python (ML / Training)
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+*.spec
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# Model artifacts / training outputs
+*.h5
+*.pkl
+*.pt
+*.onnx
+*.joblib
+*.sav
+*.model
+*.weights
+*.ckpt
+
+# Large datasets
+data/
+datasets/
+*.csv
+*.tsv
+*.parquet
+*.jsonl
+
+# =========================
+# Other
+# =========================
+coverage/
+.cache/
+*.bak
+*.tmp
+*.temp
+
+# Local only files
+*.local
+*.secret
+.next/
+changes.local.md

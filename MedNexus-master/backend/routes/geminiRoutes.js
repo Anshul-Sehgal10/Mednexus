@@ -1,6 +1,6 @@
 const express = require("express");
 const { GoogleGenerativeAI } = require("@google/generative-ai")
-
+require('dotenv').config();
 const router = express.Router();
 
 // * Access the API key and initialize the Gemini SDK.
