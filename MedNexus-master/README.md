@@ -8,6 +8,7 @@ It combines a **Node.js/Express backend** with a **Next.js frontend**, integrati
 ## ✨ Features  
 
 ### 🔮 Disease Predictor (Frontend)  
+
 - Built with **Next.js** and **Tailwind CSS**  
 - **AI-powered disease prediction** (Gemini integration)  
 - Patient **registration & login**  
@@ -16,6 +17,7 @@ It combines a **Node.js/Express backend** with a **Next.js frontend**, integrati
 - Modern, responsive UI  
 
 ### ⚙️ Backend API  
+
 - **Node.js/Express REST API**  
 - User & emergency management  
 - **WebSocket**-based real-time chat  
@@ -54,6 +56,7 @@ MedNexus-master/
 ## 🚀 Getting Started  
 
 ### ✅ Prerequisites  
+
 - [Node.js](https://nodejs.org/) (v16+)  
 - npm or yarn  
 - [Python](https://www.python.org/) (if using `app.py`)  
@@ -63,15 +66,20 @@ MedNexus-master/
 ### 🔧 Backend Setup  
 
 1. Navigate to backend:  
+
    ```powershell
    cd MedNexus-master/backend
    ```
-2. Install dependencies:  
+
+2. Install dependencies:
+
    ```powershell
    npm install
    ```
+
 3. Configure environment variables in **.env**.  
-4. Start backend server:  
+4. Start backend server:
+
    ```powershell
    npm start
    ```
@@ -80,15 +88,20 @@ MedNexus-master/
 
 ### 🎨 Frontend Setup  
 
-1. Navigate to frontend:  
+1. Navigate to frontend:
+
    ```powershell
    cd MedNexus-master/disease-predictor
    ```
-2. Install dependencies:  
+
+2. Install dependencies:
+
    ```powershell
    npm install
    ```
-3. Start development server:  
+
+3. Start development server:
+
    ```powershell
    npm run dev
    ```
@@ -97,8 +110,8 @@ MedNexus-master/
 
 ## 📌 Usage  
 
-- Frontend: **http://localhost:3000**  
-- Backend API: **http://localhost:5000** (default)  
+- Frontend: **<http://localhost:3000>**
+- Backend API: **<http://localhost:5000>** (default)  
 - Register/login as **patient** or **hospital**  
 - Use AI **disease predictor** & **emergency chat**  
 
@@ -114,7 +127,8 @@ MedNexus-master/
 
 ## 🤝 Contributing  
 
-Contributions are welcome! 🎉  
+Contributions are welcome! 🎉
+
 - Fork the repo  
 - Create a new branch (`feature/your-feature`)  
 - Commit your changes  
