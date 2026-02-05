@@ -35,6 +35,23 @@ app.get("/api/directions", async (req, res) => {
         return res.status(400).json({ error: "Missing start or end parameters" });
     }
 
+    // If no API key, return a simple straight line route
+    if (!API_KEY) {
+        const [startLng, startLat] = start.split(',').map(Number);
+        const [endLng, endLat] = end.split(',').map(Number);
+        
+        return res.json({
+            routes: [{
+                geometry: {
+                    coordinates: [
+                        [startLng, startLat],
+                        [endLng, endLat]
+                    ]
+                }
+            }]
+        });
+    }
+
     // Make request to Mapbox API
     const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start};${end}?access_token=${API_KEY}&geometries=geojson`;
 

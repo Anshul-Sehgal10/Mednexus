@@ -82,12 +82,8 @@ exports.getAcceptedEmergencies = async (req, res) => {
       .populate("patientId", "name location") // Populate patient data (name, location)
       .populate("responderId", "name location role licenseNo coverImage"); // Populate doctor data (name, location)
 
-    if (!acceptedEmergencies || acceptedEmergencies.length === 0) {
-      return res.status(404).json({ error: "No accepted emergencies found" });
-    }
-
-    // Send the list of accepted emergencies with doctor and patient info
-    res.status(200).json(acceptedEmergencies);
+    // Return empty array if no emergencies found (not an error)
+    res.status(200).json(acceptedEmergencies || []);
   } catch (error) {
     console.error("Error fetching accepted emergencies:", error);
     res.status(500).json({ error: "Failed to fetch accepted emergencies" });

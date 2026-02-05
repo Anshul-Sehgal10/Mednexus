@@ -4,33 +4,87 @@ import { Send, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const EmergencyChat = ({ emergencyId, userId }) => {
+const EmergencyChat = ({ emergencyId, userId, receiverId, userRole }) => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
+  const wsRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+
+  const senderType = userRole === 'patient' ? 'patient' : 'doctor';
 
   useEffect(() => {
-    // Establish WebSocket connection
-    const ws = new WebSocket(`ws://localhost:3004?emergencyId=${emergencyId}&userId=${userId}`);
+    if (!emergencyId || !userId) {
+      console.error('EmergencyChat: Missing required props', { emergencyId, userId });
+      return;
+    }
 
-    ws.onopen = () => {
-      console.log('WebSocket Chat Connection Established');
-      setSocket(ws);
+    let isMounted = true;
+
+    const connectWebSocket = () => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        console.log('WebSocket already connected');
+        return;
+      }
+
+      // Establish WebSocket connection
+      console.log('Attempting WebSocket connection:', { emergencyId, userId });
+      const ws = new WebSocket(`ws://localhost:3004?emergencyId=${emergencyId}&userId=${userId}`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('WebSocket Chat Connection Established');
+        if (isMounted) {
+          setSocket(ws);
+        }
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const receivedMessage = JSON.parse(event.data);
+          console.log('Received message:', receivedMessage);
+          
+          // Check if it's an error message from server
+          if (receivedMessage.error) {
+            console.error('Server error:', receivedMessage.error);
+            return;
+          }
+          
+          if (isMounted) {
+            setMessages(prevMessages => [...prevMessages, receivedMessage]);
+          }
+        } catch (error) {
+          console.error('Error parsing message:', error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket Chat Error:', error);
+        console.error('WebSocket Error Details:', {
+          readyState: ws.readyState,
+          url: ws.url
+        });
+      };
+
+      ws.onclose = (event) => {
+        console.log('WebSocket Chat Disconnected', {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean
+        });
+        
+        // Only attempt reconnect if component is still mounted and close wasn't clean
+        if (isMounted && !event.wasClean && event.code !== 1000) {
+          console.log('Attempting to reconnect in 3 seconds...');
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connectWebSocket();
+          }, 3000);
+        }
+      };
     };
 
-    ws.onmessage = (event) => {
-      const receivedMessage = JSON.parse(event.data);
-      setMessages(prevMessages => [...prevMessages, receivedMessage]);
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket Chat Error:', error);
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket Chat Disconnected');
-    };
+    connectWebSocket();
 
     // Fetch previous messages
     const fetchPreviousMessages = async () => {
@@ -46,7 +100,18 @@ const EmergencyChat = ({ emergencyId, userId }) => {
     fetchPreviousMessages();
 
     return () => {
-      ws.close();
+      console.log('Cleaning up WebSocket connection');
+      isMounted = false;
+      
+      // Clear any pending reconnect timeout
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      
+      // Close WebSocket connection cleanly
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.close(1000, 'Component unmounting');
+      }
     };
   }, [emergencyId, userId]);
 
@@ -56,15 +121,18 @@ const EmergencyChat = ({ emergencyId, userId }) => {
   }, [messages]);
 
   const handleSendMessage = () => {
-    if (inputMessage.trim() !== "" && socket) {
+    if (inputMessage.trim() !== "" && socket && receiverId) {
       const messageData = {
         senderId: userId,
-        senderType: 'patient', // or 'doctor' based on user role
+        receiverId: receiverId,
+        senderType: senderType,
         message: inputMessage
       };
 
       socket.send(JSON.stringify(messageData));
       setInputMessage("");
+    } else if (!receiverId) {
+      console.error('No receiver ID available for chat');
     }
   };
 

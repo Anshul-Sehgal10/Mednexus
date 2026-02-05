@@ -97,21 +97,30 @@ exports.login = async (req, res) => {
 exports.toggleActive = async (req, res) => {
   try {
     const { userId } = req.body;
+    
+    console.log('Toggle active request:', { userId });
+    
     const user = await User.findById(userId);
 
     if (!user) {
+      console.log('User not found:', userId);
       return res.status(404).json({ error: "User not found." });
     }
 
-    if (!["doctor", "nurse", "ambulance"].includes(user.role)) {
+    console.log('User found:', { id: user._id, role: user.role, currentStatus: user.status });
+
+    if (!user.role || !["doctor", "nurse", "ambulance"].includes(user.role.toLowerCase())) {
+      console.log('Invalid role for toggle:', user.role);
       return res.status(403).json({ error: "Only doctors, nurses, or ambulance staff can toggle active status." });
     }
 
     user.status = !user.status;
     await user.save();
 
+    console.log('Status updated successfully:', { newStatus: user.status });
     res.json({ message: "Status updated!", status: user.status });
   } catch (error) {
+    console.error('Toggle active error:', error);
     res.status(500).json({ error: error.message });
   }
 };

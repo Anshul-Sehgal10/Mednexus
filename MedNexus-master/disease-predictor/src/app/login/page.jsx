@@ -22,8 +22,11 @@ const Login = () => {
     try {
       const response = await axios.post("http://localhost:3004/api/users/login",credentials);
       localStorage.setItem("user", JSON.stringify(response.data.user)); // Save session
-      if(response.data.user.role !== "patient") router.push("/dashboard"); // Redirect to patient dashboard
-      router.push("/"); // Redirect to dashboard
+      if(response.data.user.role === "patient") {
+        router.push("/"); // Redirect patients to home page
+      } else {
+        router.push("/dashboard"); // Redirect professionals to dashboard
+      }
     } catch (error) {
         console.error("Login Error:", error); // Add this line
         alert(error.response?.data?.error || "Login failed.");

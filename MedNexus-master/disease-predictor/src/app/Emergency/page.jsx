@@ -101,11 +101,15 @@ const PatientEmergencyDashboard = () => {
         const response = await axios.get(
           "http://localhost:3004/api/emergency/accepted"
         );
-        setAcceptedEmergencies(response.data);
+        setAcceptedEmergencies(response.data || []);
         console.log("Accepted emergencies:", response.data);
       } catch (error) {
         console.error("Error fetching accepted emergencies:", error);
-        alert("Failed to fetch accepted emergencies.");
+        // Don't alert user if it's just a 404 (no emergencies found)
+        if (error.response?.status !== 404) {
+          console.error("Failed to fetch accepted emergencies:", error.message);
+        }
+        setAcceptedEmergencies([]);
       }
     };
 
@@ -467,6 +471,7 @@ const PatientEmergencyDashboard = () => {
               {acceptedEmergencies.map((emergency) => (
 
               <motion.button
+                key={emergency._id}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="flex-1 py-4 rounded-lg text-lg font-bold bg-green-500 text-white hover:bg-green-600 flex justify-center items-center space-x-2"
@@ -489,6 +494,8 @@ const PatientEmergencyDashboard = () => {
         <EmergencyChat
           emergencyId={acceptedEmergencies[0]._id}
           userId={user.id}
+          receiverId={acceptedEmergencies[0].responderId?._id}
+          userRole={user.role}
         />
       )}
     </div>

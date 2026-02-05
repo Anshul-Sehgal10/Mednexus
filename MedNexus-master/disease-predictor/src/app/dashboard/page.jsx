@@ -106,7 +106,7 @@ const DoctorDashboard = () => {
       setIsActive(!isActive);
       // Call the backend API to toggle the doctor's active status
       const response = await axios.post(
-        "http://localhost:3004/api/toggle-active",
+        "http://localhost:3004/api/users/toggle-active",
         {
           userId: user.id, // Pass the userId from state
         }
@@ -126,18 +126,25 @@ const DoctorDashboard = () => {
     setLoading(true);
     try {
       const response = await axios.get("http://localhost:3004/api/emergency/requests");
+      console.log("📋 All emergency requests:", response.data);
   
       const hasInProgress = response.data.some((e) => e.status === "inProgress");
   
       const filteredRequests = response.data.filter((emergency) => {
-        // 1️⃣ Check if there's an inProgress emergency
-        if (hasInProgress) {
-          return emergency.status === "inProgress"; // Show only inProgress emergencies
+        // 1️⃣ Check if there's an inProgress emergency assigned to this user
+        if (hasInProgress && emergency.status === "inProgress") {
+          // Show only inProgress emergencies assigned to this responder
+          return emergency.responderId === user.id;
         } 
         
         // 2️⃣ If no inProgress, show pending based on user role
         if (emergency.status === "pending") {
-          switch (user.role) {
+          if (!user || !user.role) {
+            console.log("⚠️ User or user role not defined");
+            return false;
+          }
+          
+          switch (user.role.toLowerCase()) {
             case "doctor":
               return emergency.severity === "moderate"; // doctor sees moderate requests
             case "ambulance":
@@ -145,14 +152,16 @@ const DoctorDashboard = () => {
             case "nurse":
               return emergency.severity === "normal"; // nurse sees normal requests
             default:
-              return true; // Show all if role is undefined
+              console.log("⚠️ Unknown role:", user.role);
+              return false;
           }
         }
         return false; // Exclude other statuses
       });
   
       setEmergencyRequests(filteredRequests);
-      console.log("✅ Fetched emergency requests:", filteredRequests);
+      console.log("✅ Filtered emergency requests:", filteredRequests);
+      console.log("👤 Current user role:", user?.role);
     } catch (error) {
       console.error("❌ Failed to fetch emergency requests:", error);
     }
@@ -263,9 +272,15 @@ const DoctorDashboard = () => {
       });
 
       alert("Emergency accepted!");
-      fetchEmergencyRequests(); // Re-fetch after accepting
+      
+      // Fetch route immediately after accepting
+      await getRoute(patientLocation, responderLocation);
+      
+      // Re-fetch emergency requests to update the list
+      await fetchEmergencyRequests();
     } catch (error) {
       console.error("❌ Error accepting emergency:", error);
+      alert("Failed to accept emergency. Please try again.");
     }
   };
 
@@ -472,36 +487,43 @@ const DoctorDashboard = () => {
 />
                     <div className="flex items-center text-gray-400 text-sm mb-3">
                       <MapPin className="w-4 h-4 mr-1" />
-                      {emergency.status}
+                      {emergency.status === "inProgress" ? "En Route to Patient" : emergency.status}
                       <span className="mx-2">•</span>
                       {convertTo12HourFormat(emergency.createdAt)}
                     </div>
-                    <div className="flex space-x-2">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg flex items-center justify-center space-x-1"
-                        onClick={() =>
-                          acceptEmergency(
-                            emergency._id,
-                            emergency.patientId._id,
-                            emergency.patientLocation
-                          )
-                        }
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>Accept</span>
-                      </motion.button>
+                    
+                    {emergency.status === "pending" ? (
+                      <div className="flex space-x-2">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="flex-1 bg-green-500/20 text-green-400 py-2 rounded-lg flex items-center justify-center space-x-1"
+                          onClick={() =>
+                            acceptEmergency(
+                              emergency._id,
+                              emergency.patientId._id,
+                              emergency.patientLocation
+                            )
+                          }
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>Accept</span>
+                        </motion.button>
 
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex-1 bg-red-500/20 text-red-400 py-2 rounded-lg flex items-center justify-center space-x-1"
-                      >
-                        <X className="w-4 h-4" />
-                        <span>Decline</span>
-                      </motion.button>
-                    </div>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="flex-1 bg-red-500/20 text-red-400 py-2 rounded-lg flex items-center justify-center space-x-1"
+                        >
+                          <X className="w-4 h-4" />
+                          <span>Decline</span>
+                        </motion.button>
+                      </div>
+                    ) : (
+                      <div className="bg-blue-500/20 text-blue-400 py-3 rounded-lg text-center font-semibold">
+                        🚑 Active Emergency - Navigate to Patient
+                      </div>
+                    )}
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -521,13 +543,7 @@ const DoctorDashboard = () => {
                 >
                   <Phone className="w-7 h-5" />
                 </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="p-2 bg-gray-800/50 rounded-lg"
-                >
-                  <ChatDialog />
-                </motion.button>
+                <ChatDialog />
               </div>
             </div>
             <div className="bg-gray-800/50 rounded-lg h-[calc(100%-4rem)] flex items-center justify-center">
